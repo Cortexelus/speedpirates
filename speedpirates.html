@@ -655,13 +655,17 @@
 <!-- Bootstrap core JavaScript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+<script src="js/jquery-1.10.2.min.js"></script>
 
 <script>  
 var song = null;
 var bank = 1; // each bank is a set of loops mappable to A-Z
 var savedLoops = {};
 var concurrently_connected = false; // flag that we turn on, once we're connected
+
+// CONFIG
+
+var globalForeverLoops = 32;
 
 
 
@@ -691,10 +695,18 @@ function saveLoopToKeyboard(banknum, k){
     if(concurrently_connected){
       // tell everyone about the new loop
       //console.log(loop);
-      room.key('savedloops/'+banknum+'/'+k).set(loop.json_loop());
+      room["savedloops"][banknum][k] = loop.json_loop()
+      saveRoom();
+      //room.key('savedloops/'+banknum+'/'+k).set(loop.json_loop());
     }
   }
   $(".keyboard").show();
+}
+
+function saveRoom(){
+  // room 
+  // call ajax to save room to room.json file
+  console.log("saveRoom", room)
 }
 
 // number 0 through 9, opens up the trigger bank 
@@ -1314,11 +1326,42 @@ function load_song(song_url, video_url, artist, title, data){
 
 // concurrent variables in the global scope
 var room = null;
+/*
 var songdata = {};
 var songdatakey = null;
 var songloopskey = null;
+*/
+
+
+/* need room files that are like */
+/*
+{song_url:"mp3/vae..mp3",
+video_url:"",
+artist:"Vaetxh",
+title:"Cuntpressor",
+analysis_filename:"vaetxh_cuntpres.102.1.json"
+savedloops:{}}
+*/
+
+function load_local_room(roomname){
+  console.log(roomname);
+  $.getJSON("rooms/"+roomname+".json", function(roomdata){ 
+    room = roomdata;
+    console.log(roomdata)
+    analysis_filename = roomdata["analysis_filename"];
+    $.getJSON("analysis/"+analysis_filename, function(analysisdata){    
+        console.log(analysisdata);
+        // finally we can load the song
+        load_song(roomdata["song_url"],roomdata["video_url"],roomdata["artist"], roomdata["title"], analysisdata);
+        //init_concurrency();
+        load_saved_loops(roomdata["savedloops"])
+    });
+  });
+}
 
 /* load the room */
+/* todo: goinstant no longer exists */
+/*
 function load_room(roomname){
     // mongoDB concurrency --- using goinstant until it's no longer free or until I run my own server
     // Connect URL
@@ -1345,10 +1388,9 @@ function load_room(roomname){
 
             });
         });
-
-        
     });
 }
+*/
 
 function load_jsonloop(bank, k, jsonloop){
   //console.log("k",k,jsonloop)
@@ -1367,13 +1409,38 @@ function load_jsonloop(bank, k, jsonloop){
   savedLoops[bank][k] = loop;
 }
 
+
+function load_saved_loops(banks){
+    $.each(banks,function(banknum,loops){
+        console.log(banknum);
+        //if(parseInt(banknum) == banknum){
+        $.each(loops,function(k,jsonloop){
+            if(k>0){
+              //song.load_loop(savedLoops[k]);
+              //console.log(jsonloop)
+              jsonloop = $.parseJSON(jsonloop); // storing it as string
+              load_jsonloop(banknum, k, jsonloop)
+            }
+        });
+    });
+    drawLoopKeys();
+
+    drawTriggerBanks()
+    if(song.sound_loaded){
+      $(".keyboard").show();
+    }
+}
+
+/*
 // once the song is loaded, and we're connected to init the concurrency functions
 function init_concurrency(){
     concurrently_connected = true; // now we turn this flag on
 
     // now load the loops                
-    savedloopskey = room.key('savedloops');
-    savedloopskey.get(function(err, banks) {
+    //savedloopskey = room.key('savedloops');
+
+    var banks = room.savedloops;
+    //savedloopskey.get(function(err, banks) {
         // so nested we're laying eggs
 
         $.each(banks,function(banknum,loops){
@@ -1397,8 +1464,9 @@ function init_concurrency(){
         }
     });
 
-    var savedlooplistener = room.key('savedloops/');
+    //var savedlooplistener = room.key('savedloops/');
 
+    
     // called when another user changes or saves a new loop to the triggerbanks
     savedlooplistener.on('set', {bubble:true}, function(jsonloop, context) {
       //console.log(context)
@@ -1418,6 +1486,8 @@ function init_concurrency(){
       }
     });
 
+
+
     // called when another user removes a loop from the trigger banks
     savedlooplistener.on('remove', {bubble:true}, function(jsonloop, context) {
       //console.log(context)
@@ -1435,32 +1505,32 @@ function init_concurrency(){
         }
       }
     });
-    /*
-    for(var k = 65; k <= 90; k++){
-        var looplistener = room.key('savedloops/'+k);
-        looplistener.on('set', function(jsonloop, context) {
-          
-        });   
-    }*/
-}
+} */
+
+
 
 $(function(){
-  if($.cookie('hidejumbotron')){
+  //if($.cookie('hidejumbotron')){
     hideJumbotron(); 
-  }
+  //}
   $("body").fadeIn(2000);
 
   showLessInit();
+
+  /*
   var roomname = getUrlVars()["x"] || "49.thebeatl_dearprud";
-  load_room(roomname);
+  load_room(roomname);*/
+
+  var roomname = getUrlVars()["y"] || "vaetxh_cuntpressor"
+  load_local_room(roomname)
 });
 
 
 </script>
 
 <script src="js/jquery.cookie.js"></script>
-<script src="http://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
-<script src='https://cdn.firebase.com/v0/firebase.js'></script>
+<script src="js/jquery-ui.js"></script>
+<!-- <script src='https://cdn.firebase.com/v0/firebase.js'></script> -->
 <script src="js/bootstrap.min.js"></script>
 <script src="js/holder.js"></script>
 
@@ -1470,192 +1540,17 @@ $(function(){
 
 <script src="js/bootstrap-slider.js"></script>
 
-<script type="text/javascript" src="https://cdn.goinstant.net/v1/platform.min.js"></script>
+<!-- <script type="text/javascript" src="https://cdn.goinstant.net/v1/platform.min.js"></script> -->
+
+
+<!-- // MIDI 
 
 
 <object id="Jazz2" type="audio/x-jazz" style="width:0px; height:0px">
   <p style="visibility:visible;">This page requires <a href=http://jazz-soft.net>Jazz-Plugin</a> ...</p>
 </object>
 
-<script>
-var Jazz = document.getElementById("Jazz2");
-function playMidiTest(){
- if(Jazz.isJazz){
+<script src="js/midi.js"></script> -->
 
-  Jazz.MidiOut(0xb0,02,100);
-  Jazz.MidiOut(0x90,60,100);
-  Jazz.MidiOut(0x90,64,100);
-  Jazz.MidiOut(0x90,67,100);
- }
-}
-function stopMidiTest(){
- if(Jazz.isJazz){
-  Jazz.MidiOut(0xb0,02,0);
-  Jazz.MidiOut(0x80,60,0);
-  Jazz.MidiOut(0x80,64,0);
-  Jazz.MidiOut(0x80,67,0);
- }
-}
-
-var enableMidi = true
-var globalForeverLoops = 32;
-// r g b are values 0 to 127
-function midiColor(r, g, b){
-  if(Jazz.isJazz && enableMidi){
-      Jazz.MidiOut(0xb0,02,r);
-      Jazz.MidiOut(0xb0,03,g);
-      Jazz.MidiOut(0xb0,04,b);
-  }
-}
-
-function newMidiMessage(t,a,b,c){
-  //msg.innerHTML=msg.innerHTML+midiString(a,b,c)+"<br>";
-  //msg.scrollTop=msg.scrollHeight;
-  if(b==0 && c==0){
-    return;
-  }
-  if(a==153){ // drum pad
-    if(b>=31 && b<=55){
-      // 49 51 55
-      // 41 48 45
-      // 32 31 39
-      // 33 43 34 
-      if(c>0){
-        // trigger
-        var k = 0;
-
-        // top row
-        if(b == 49) k = 81;
-        if(b == 55) k = 65;
-        if(b == 51) k = 90;
-
-        // mid row
-        if(b == 41) k = 87;
-        if(b == 45) k = 83;
-        if(b == 48) k = 88;
-
-        // 2nd mid row
-        if(b == 32) k = 69;
-        if(b == 31) k = 68;
-        if(b == 39) k = 67;
-
-        // bottom row
-        /* if(b == 33) k = 82;
-        if(b == 34) k = 70;
-        if(b == 43) k = 86;
-  */
-        if(b == 33 || b == 34 || b == 43){
-          song.stop_audio();
-          return;
-        }
-
-
-        // kick
-        if(b == 38) k = 80;
-
-        // snare
-        if(b == 35) k = 75  ; //rim
-        if(b == 36) k = 76;
-
-        // tom
-        //if(b == 45) k = 78;
-        if(b == 46) k = 77;
-
-        if(k) triggerKey(k, false)
-      }
-    }
-  }
-  console.log("newMIdi", t, a, b, c)
-  /*if(a==144){ //note on
-    if(b>=24 || b<=108){
-      // NOTE
-      // 24 -> 32.703
-      // 108 -> 4186
-      // fm  =  2(m−69)/12(440 Hz).
-      fr = 440 * Math.pow(2, (b - 69)/12);
-      bpm = fr * 60 / 32;
-      console.log(b, fr, bpm)
-      song.tempo = bpm
-      song.replay_loop();
-    }
-  }*/
-
-}
-// Connect/disconnect
-function connectMidiIn(){
- try{
-  var str=Jazz.MidiInOpen(input_midi_device,newMidiMessage);
-  for(var i=0;i<sel.length;i++){
-   if(selectinmidi[i].value==str)  selectinmidi[i].selected=1;
-  }
- }
- catch(err){}
-}
-
-function disconnectMidiIn(){
- try{
-  Jazz.MidiInClose(); selectinmidi[0].selected=1;
- }
- catch(err){}
-}
-
-
-if(navigator.appName=='Microsoft Internet Explorer'){ document.onfocusin=onFocusIE; document.onfocusout=onBlurIE;}
-else{ window.onfocus=connectMidiIn; window.onblur=disconnectMidiIn;}
-
-
-
-
-
-
-var input_midi_device = null;
-
-function changeoutmidi(){
- Jazz.MidiOutOpen(selectoutmidi.options[selectoutmidi.selectedIndex].value);
-}
-function changeinmidi(){
-  input_midi_device = selectinmidi.options[selectinmidi.selectedIndex].value
- Jazz.MidiInOpen(input_midi_device, newMidiMessage);
-}
-
-var selectinmidi=document.getElementById('selectinmidi');
-var selectoutmidi=document.getElementById('selectoutmidi');
-function midiList(max_tries){
-  var timeout = 1000;
-  try{
-   var list=Jazz.MidiOutList();
-   for(var i in list){
-    selectoutmidi[i]=new Option(list[i],list[i],i==0,i==0);
-    // automatically select "elec man"
-    if(list[i]=="Elec Man"){
-      Jazz.MidiOutOpen(i);
-      selectoutmidi[i].selected=1;
-    }
-
-   }
-
-   var list=Jazz.MidiInList();
-   for(var i in list){
-    selectinmidi[i]=new Option(list[i],list[i],i==0,i==0);
-
-    if(list[i]=="Port1"){
-      Jazz.MidiInOpen(i, newMidiMessage);
-      selectinmidi[i].selected=1;
-      input_midi_device = i;
-    }
-
-   }
-  }
-  catch(err){
-    console.log("blah", err)
-    if(max_tries > 0){
-      console.log("trying again in " + timeout);
-      setTimeout(function(){midiList( max_tries - 1)}, timeout);
-    }
-  }
-}
-midiList(5)
-</script>
-
-  </body>
+</body>
 </html>

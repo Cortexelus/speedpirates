@@ -992,8 +992,10 @@ function Song(id, mp3, song_title, artist, segments, palette){
 		$(".navbar-brand").css("color",rgbCode(hslToRgb(hue, 0.8, 0.5)))
 
 		color = hslToRgb(hue, 1.0, 0.5)
-		midiColor(Math.floor(color[0]/2), Math.floor(color[1]/2), Math.floor(color[2]/2))
-
+		if(typeof(midiColor)==="function"){
+			midiColor(Math.floor(color[0]/2), Math.floor(color[1]/2), Math.floor(color[2]/2))
+		}
+		
 		if(_song.have_video){
 			$("#video").css("-webkit-filter", "sepia(100%) hue-rotate("+(hue*360-60)+"deg) saturate(10)")
 			$('#video')[0].currentTime = start_time;
