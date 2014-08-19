@@ -139,49 +139,26 @@ function buildPaletteFromEchoNestTrackID(trid){
 }
 
 function analyze(song_url, artist, title, segments){
-	// k we have song_url, let's see if we've analyzed this song before....
-	console.log("should we analyze this?");
+	// k we have song_url, let's analze
+	json_palette = make_palette(segments);
+
+	// done with analysis.. uploading...
+	console.log("done with analysis..downloading");
 	$.ajax({
 		type: 'POST',
-		url: 'loyalminion.php',
-		data: {'decree': 'should we analyze?',
-			'song_url': song_url, 
-			'soundpalette_algorithm_version': soundpalette_algorithm_version},
+		url: 'makejson.php',
+		data: {'decree': 'prepare the arrangements',
+			'songdata': {
+				"song_url" : song_url,
+				"artist" : artist,
+				"title" : title,
+				"soundpalette_algorithm_version" : soundpalette_algorithm_version},
+				"segments_palette" : JSON.stringify(json_palette)},
 		success: function(response) {
-			console.log(response);
+			console.log("blerh",response);
 			response = $.parseJSON(response);
-			if(response["msg"] == "yes"){
-				// okay, analyze the song then! 
-				json_palette = make_palette(segments);
-
-				// done with analysis.. uploading...
-				console.log("done with analysis..uploading");
-				$.ajax({
-					type: 'POST',
-					url: 'loyalminion.php',
-					data: {'decree': 'prepare the arrangements',
-						'songdata': {
-							"song_url" : song_url,
-							"artist" : artist,
-							"title" : title,
-							"soundpalette_algorithm_version" : soundpalette_algorithm_version},
-						"segments_palette" : JSON.stringify(json_palette)},
-					success: function(response) {
-						console.log("blerh",response);
-						response = $.parseJSON(response);
-						if(response["roomname"]){
-							// analysis uploaded, room created
-							console.log("roomname "+response["roomname"])
-							redirect_to_room(response["roomname"]);
-						}else{
-							console.log("fail");
-						}
-					}
-				});
-
-
-			}else if(response["roomname"]){
-				// we've already analyzed this song, and the analysis is up to date
+			if(response["roomname"]){
+				// analysis uploaded, room created
 				console.log("roomname "+response["roomname"])
 				redirect_to_room(response["roomname"]);
 			}else{
@@ -244,7 +221,7 @@ if(trid){
 
 function redirect_to_room(roomname){
 	//console.log(roomname);
-	window.location.href = 'crowdremix4.1.html?x=' + roomname
+	window.location.href = 'speedpirates.html?room=' + roomname
 }
  
 
